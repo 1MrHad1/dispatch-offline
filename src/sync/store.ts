@@ -3,10 +3,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { reduce } from './reducer';
 import { nextWork } from './scheduler';
 import { GOOD_SIGNAL, SimulatedServer } from './transport';
-import type { Conditions } from './transport';
+import type { Conditions, ServerState } from './transport';
 import type { Dispatch, SyncEvent } from './types';
 
 const STORAGE_KEY = 'dispatch.outbox.v1';
+/**
+ * The stand-in server's own memory. Kept apart from the outbox because they are
+ * two different parties' state that happen to share a device.
+ */
+const SERVER_KEY = 'dispatch.server.v1';
 
 /**
  * The engine. Everything that touches the world lives here: storage, timers and
@@ -48,6 +53,13 @@ export class OutboxStore {
       // A corrupt outbox is worse than an empty one only if we crash on it.
       this.items = [];
     }
+
+    try {
+      const raw = await AsyncStorage.getItem(SERVER_KEY);
+      if (raw) this.server.restore(JSON.parse(raw) as ServerState);
+    } catch {
+      // The server starting fresh costs a duplicate at worst, and only in a demo.
+    }
     // Reconsider anything that was mid-flight when the app last died. See the
     // reducer's 'rehydrated' case for why this is safe to replay.
     this.apply({ type: 'rehydrated', at: Date.now() });
@@ -64,6 +76,7 @@ export class OutboxStore {
   private async persist() {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(this.items));
+      await AsyncStorage.setItem(SERVER_KEY, JSON.stringify(this.server.snapshot()));
     } catch {
       // Persisting is best-effort. Losing it costs a replay, not a dispatch,
       // because the in-memory outbox is still the source of truth this session.

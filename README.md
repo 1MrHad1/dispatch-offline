@@ -86,11 +86,11 @@ whether or not React is rendering, and there is exactly one of it.
 npm test
 ```
 
-22 tests, named after the behaviour they protect rather than the function they
+30 tests, named after the behaviour they protect rather than the function they
 call:
 
 ```
-written is a local commit
+writing is a local commit
 the id is an idempotency key and never changes
 an unanswered request is not a failed one
 retryable and permanent failures are different things
@@ -98,11 +98,20 @@ one attempt at a time per dispatch
 backoff grows, is capped, and is jittered
 nothing is attempted while offline
 order is preserved
+the idempotency contract
+a server that is restarted still remembers
+failures the client has to tell apart
 ```
 
 They cover the engine, not the screens. Rendering tests for this app would mostly
 assert that React renders, which is not a risk I have; the risk is a dispatch
 being filed twice, and that is what these cover.
+
+The restart test is there because of a real bug. The stand-in server lived only
+in memory, so reloading the page wiped its record of what it had seen. The
+exactly-once guarantee quietly shrank to "within one session", and two different
+dispatches came back holding the same server id. A real server would not forget,
+so this one no longer does either.
 
 ## Design notes
 

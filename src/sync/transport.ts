@@ -57,14 +57,33 @@ export type SendResult =
   | { ok: true; serverId: string; alreadyHadIt: boolean }
   | { ok: false; retryable: boolean; problem: string };
 
+/** What the server knows, in a shape that survives being written to disk. */
+export type ServerState = {
+  /** idempotency key -> the id assigned the first time that key was seen. */
+  seen: [string, string][];
+  counter: number;
+};
+
 export class SimulatedServer {
-  /** idempotency key -> the id this server assigned the first time it saw it. */
-  private readonly seen = new Map<string, string>();
+  private seen = new Map<string, string>();
   private counter = 0;
 
-  /** Everything the server has accepted, oldest first. The feed reads this. */
-  published(): { serverId: string; key: string }[] {
-    return [...this.seen.entries()].map(([key, serverId]) => ({ key, serverId }));
+  /**
+   * A real server remembers across a client restart, so this one has to as
+   * well. Without it the idempotency guarantee quietly shrinks to "within one
+   * session": reload the page after a lost reply and the server, having
+   * forgotten the key, files the dispatch a second time.
+   *
+   * The reading and writing happen in store.ts. This class only hands over its
+   * state, which keeps it free of storage imports and testable on its own.
+   */
+  snapshot(): ServerState {
+    return { seen: [...this.seen.entries()], counter: this.counter };
+  }
+
+  restore(state: ServerState) {
+    this.seen = new Map(state.seen);
+    this.counter = state.counter;
   }
 
   async send(dispatch: Dispatch, conditions: Conditions): Promise<SendResult> {
