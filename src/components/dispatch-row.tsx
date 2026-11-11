@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 
@@ -21,6 +22,27 @@ export function DispatchRow({ dispatch }: { dispatch: Dispatch }) {
   const theme = useTheme();
   const store = useOutboxStore();
 
+  // Discarding is the one thing in this app that destroys something the writer
+  // made, and there is no undo for it. So it asks once. A second tap inside four
+  // seconds goes through; anything else and it forgets, which keeps a mis-tap
+  // from arming a delete that sits there waiting to be hit.
+  const [confirming, setConfirming] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
+
+  function onDiscardPress() {
+    if (confirming) {
+      if (timer.current) clearTimeout(timer.current);
+      store.discard(dispatch.id);
+      return;
+    }
+    setConfirming(true);
+    timer.current = setTimeout(() => setConfirming(false), 4000);
+  }
+
   return (
     <Animated.View
       entering={FadeIn.duration(220).reduceMotion(ReduceMotion.System)}
@@ -30,14 +52,14 @@ export function DispatchRow({ dispatch }: { dispatch: Dispatch }) {
         .reduceMotion(ReduceMotion.System)}
       style={[styles.row, { backgroundColor: theme.backgroundElement }]}>
       <View style={styles.top}>
-        <ThemedText type="heading" numberOfLines={2} style={styles.headline}>
+        <ThemedText type="heading" style={styles.headline}>
           {dispatch.headline}
         </ThemedText>
         <StatusPill status={dispatch.status} />
       </View>
 
       {dispatch.body.length > 0 && (
-        <ThemedText type="callout" themeColor="textSecondary" numberOfLines={2}>
+        <ThemedText type="callout" themeColor="textSecondary">
           {dispatch.body}
         </ThemedText>
       )}
@@ -82,12 +104,24 @@ export function DispatchRow({ dispatch }: { dispatch: Dispatch }) {
             </ThemedText>
           </PressableScale>
           <PressableScale
-            onPress={() => store.discard(dispatch.id)}
+            onPress={onDiscardPress}
             accessibilityRole="button"
-            accessibilityLabel={`Discard ${dispatch.headline}`}
-            style={[styles.action, { backgroundColor: theme.backgroundSelected }]}>
-            <ThemedText type="caption" style={styles.actionLabel}>
-              Discard
+            accessibilityLabel={
+              confirming
+                ? `Confirm discarding ${dispatch.headline}. This cannot be undone.`
+                : `Discard ${dispatch.headline}`
+            }
+            style={[
+              styles.action,
+              {
+                backgroundColor: confirming ? theme.stuckSurface : theme.backgroundSelected,
+              },
+            ]}>
+            <ThemedText
+              type="caption"
+              themeColor={confirming ? 'stuck' : 'text'}
+              style={styles.actionLabel}>
+              {confirming ? 'Tap again to delete' : 'Discard'}
             </ThemedText>
           </PressableScale>
         </View>
