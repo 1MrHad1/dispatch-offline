@@ -125,6 +125,12 @@ The web target is a single-page build. This is an application, not a content
 site, so there is nothing here worth prerendering for a crawler, and the
 prerender was costing a hydration mismatch.
 
+One bug worth naming because it was invisible: a counter read `store.summary()`
+during render. Under the React Compiler that memoizes against a store reference
+which never changes, so it computed once and then reported zero for the rest of
+the session while two dispatches sat on screen. Counts are now derived from the
+snapshot the component already subscribes to.
+
 ## Running it
 
 ```bash
@@ -148,7 +154,11 @@ Worth saying plainly, since this is a demo and not a product:
 - **No background sync.** The engine runs while the app is open. Real delivery
   after the app is closed needs platform background tasks, which need a build
   and a device to test honestly.
-- **Not tested on a physical device**, only in the simulator and the browser.
+- **Only run on the web so far.** The code targets iOS and Android, and the
+  native tab bar is wired up for both, but the machine I wrote this on has no
+  Xcode, so I have not built it for a simulator or a handset and I am not going
+  to claim otherwise. Everything described above was verified in a browser
+  against the production build.
 - **No accounts, no media, no push.**
 
 MIT.
