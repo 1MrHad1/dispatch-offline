@@ -1,0 +1,3 @@
+# Single-page build: every route is served by the same shell and resolved on the
+# client. Without this a reload on /signal is a 404 from the static host.
+/*  /index.html  200

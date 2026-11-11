@@ -1,40 +1,65 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
+ * Design tokens.
+ *
+ * Two rules this file exists to enforce. Status is never carried by colour
+ * alone, because a reader who cannot separate amber from green still has to be
+ * able to tell a queued dispatch from a published one; every status ships a
+ * word and a glyph alongside its colour. And every text colour here clears
+ * WCAG AA against the surface it is used on, in both themes.
  */
 
 import '@/global.css';
 
 import { Platform } from 'react-native';
 
-export const Colors = {
+const palette = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#11131A',
+    textSecondary: '#5A6072',
+    background: '#FFFFFF',
+    backgroundElement: '#F2F3F6',
+    backgroundSelected: '#E3E5EB',
+    hairline: '#DCDEE5',
+    /** Queued: waiting, nobody's fault. */
+    waiting: '#8A5A00',
+    waitingSurface: '#FDF3DF',
+    /** In flight. */
+    active: '#0B5BD3',
+    activeSurface: '#E6EEFC',
+    /** The server has it. */
+    done: '#0E6A3E',
+    doneSurface: '#E2F3EA',
+    /** Needs a person. */
+    stuck: '#B3261E',
+    stuckSurface: '#FCE9E7',
   },
   dark: {
-    text: '#ffffff',
+    text: '#FFFFFF',
+    textSecondary: '#A0A6B4',
     background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    backgroundElement: '#16181D',
+    backgroundSelected: '#23262E',
+    hairline: '#2A2E37',
+    waiting: '#F5BE5A',
+    waitingSurface: '#2A2110',
+    active: '#7AB4FF',
+    activeSurface: '#0F1C2E',
+    done: '#5FD39A',
+    doneSurface: '#0D2419',
+    stuck: '#FF8A80',
+    stuckSurface: '#2B1310',
   },
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export const Colors = palette;
+
+export type ThemeColor = keyof typeof palette.light & keyof typeof palette.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -49,7 +74,7 @@ export const Fonts = Platform.select({
     rounded: 'var(--font-rounded)',
     mono: 'var(--font-mono)',
   },
-});
+})!;
 
 export const Spacing = {
   half: 2,
@@ -61,5 +86,26 @@ export const Spacing = {
   six: 64,
 } as const;
 
+export const Radius = {
+  small: 8,
+  medium: 14,
+  large: 22,
+  pill: 999,
+} as const;
+
+/**
+ * Springs, in Apple's two parameters rather than mass/stiffness/damping.
+ * Default to no overshoot. Bounce is reserved for motion a gesture threw, which
+ * in this app means the sheet, and nothing else.
+ */
+export const Motion = {
+  /** Reposition, state change, anything the user did not fling. */
+  standard: { damping: 1, stiffness: 220, mass: 1 },
+  /** Sheets and anything a drag released. */
+  thrown: { damping: 0.82, stiffness: 260, mass: 1 },
+  /** Press feedback has to be felt, not watched. */
+  pressMs: 90,
+} as const;
+
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 720;
